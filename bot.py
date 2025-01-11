@@ -7,10 +7,32 @@ import asyncio
 from datetime import datetime, timedelta
 import requests
 
+# Создание бота и диспетчера
+bot = Bot(token=TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
+
 
 
 # Токен бота
 TOKEN = "7311925613:AAEozZhlP1th7_X3LRJS_7lo3jsjy4ALHfE"
+
+async def main():
+    # Установить команды бота
+    await bot.set_my_commands([
+        BotCommand(command="/start", description="Начало работы с ботом")
+    ])
+    
+    # Запуск бота
+    try:
+        print("Бот запущен...")
+        await dp.start_polling(bot)
+    finally:
+        await bot.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
 
 # Ссылки на спонсоров
 SPONSORS = [
