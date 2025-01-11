@@ -33,10 +33,6 @@ import os
 # Создаем приложение Flask
 app = Flask(__name__)
 
-# Пример маршрута
-@app.route("/")
-def home():
-    return "Hello, this is your bot!"
 
 # Запуск приложения
 if __name__ == "__main__":
