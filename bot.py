@@ -36,15 +36,7 @@ import os
 # Создаем приложение Flask
 app = Flask(__name__)
 
-# Пример маршрута
-@app.route("/")
-def home():
-    return "Hello, this is your bot!"
 
-# Запуск приложения
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Порт из переменной окружения или 5000
-    app.run(host="0.0.0.0", port=port)  # Хост и порт
 
 
 
