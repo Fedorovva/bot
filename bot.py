@@ -7,22 +7,24 @@ import asyncio
 from datetime import datetime, timedelta
 import requests
 import os
-
 from flask import Flask, render_template
 from threading import Thread
 
 app = Flask(__name__)
 
 @app.route('/')
-def index ():
+def index():
     return "Alive"
 
-def run ():
-  app.run(host='0.0.0.0',port=3000)
+def run():
+    # Получаем порт из переменной окружения
+    port = int(os.environ.get("PORT", 5000))  # Если переменная окружения PORT не установлена, используем 5000 по умолчанию
+    app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
     t = Thread(target=run)
     t.start()
+
 
 # Токен бота
 TOKEN = "7311925613:AAEozZhlP1th7_X3LRJS_7lo3jsjy4ALHfE"
