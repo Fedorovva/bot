@@ -7,9 +7,6 @@ import asyncio
 from datetime import datetime, timedelta
 import requests
 import os
-from flask import Flask
-
-app = Flask(__name__)
 
 # Токен бота
 TOKEN = "7311925613:AAEozZhlP1th7_X3LRJS_7lo3jsjy4ALHfE"
@@ -476,7 +473,6 @@ async def main():
     ])
     await dp.start_polling(bot)
 
-if __name__ == '__main__':
-    # Получение порта из переменной окружения PORT
-    port = int(os.getenv('PORT', 10000))  # 10000 — значение по умолчанию
-    app.run(host='0.0.0.0', port=port)
+if __name__ == "__main__":
+    asyncio.run(main())
+
