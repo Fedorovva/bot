@@ -27,9 +27,6 @@ TEAM_LINK = "https://t.me/+UaMfr7uB405mMGNi"
 # Ссылка для вывода средств
 WITHDRAW_LINK = "https://t.me/c/2350708541/5"
 
-# Создаем бота и диспетчер
-bot = Bot(token=TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
 from flask import Flask
 import os
 
@@ -43,8 +40,8 @@ def home():
 
 # Запуск приложения
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Порт из переменной окружения или 5000
-    app.run(host="0.0.0.0", port=port)  # Хост и порт
+    port = int(os.environ.get("PORT", 10000))  # Порт из переменной окружения или 10000 (по умолчанию для Render)
+    app.run(host="0.0.0.0", port=port)  # Привязываем сервер к 0.0.0.0 и нужному порту
 
 
 
