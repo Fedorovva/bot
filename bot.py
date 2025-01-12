@@ -1,4 +1,7 @@
-start
+if __name__ == "__main__":
+    print("Starting bot...")
+    # Ваш основной код бота
+
 from aiogram import Bot, Dispatcher
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
 from aiogram import F
