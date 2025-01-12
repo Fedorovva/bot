@@ -7,11 +7,8 @@ import asyncio
 from datetime import datetime, timedelta
 import requests
 
-
 from flask import Flask, request
-
 app = Flask(__name__)
-
 @app.route('/')
 def index():
     return '''
@@ -26,9 +23,6 @@ def button_click():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
-
-
-
 
 
 # Токен бота
