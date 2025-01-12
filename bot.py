@@ -1,4 +1,4 @@
-start
+
 from aiogram import Bot, Dispatcher
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
 from aiogram import F
@@ -476,6 +476,39 @@ async def main():
         BotCommand(command="/start", description="Начать работу")
     ])
     await dp.start_polling(bot)
+
+
+from psycopg2 import OperationalError
+
+try:
+    db_connection = psycopg2.connect(DB_URI, sslmode="require")
+    db_object = db_connection.cursor()
+except OperationalError as e:
+    print(f"Ошибка подключения к базе данных: {e}")
+    exit()
+
+@dp.message_handler(commands=['start'])
+async def command_start(message: types.Message):
+    user_id = message.from_user.id
+    username = message.from_user.username
+
+    if message.chat.type == "private":
+        try:
+            # Проверяем, есть ли пользователь в базе данных
+            db_object.execute(f"SELECT id FROM users WHERE id = {user_id}")
+            result = db_object.fetchone()
+
+            if not result:
+                # Добавляем нового пользователя
+                db_object.execute("INSERT INTO users(id, username) VALUES (%s, %s)", (user_id, username))
+                db_connection.commit()
+                await bot.send_message(message.chat.id, f"Добро пожаловать, {username}!\nВы получили 2 бесплатных балла.", reply_markup=await gen_main_markup())
+            else:
+                await bot.send_message(message.chat.id, f"Добро пожаловать обратно, {username}!", reply_markup=await gen_main_markup())
+        except Exception as e:
+            await bot.send_message(message.chat.id, "Произошла ошибка при работе с базой данных.")
+            print(f"Ошибка: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
