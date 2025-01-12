@@ -11,17 +11,21 @@ from flask import Flask
 
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "Hello, world!"
+@app.route("/", methods=["GET"])
+def index():
+    return "Бот работает!"
+
 
 
 @app.route('/button_click', methods=['POST'])
 def button_click():
     return 'Кнопка нажата!'
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+import os
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+
 
 
 # Токен бота
