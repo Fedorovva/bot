@@ -14,7 +14,17 @@ import requests
 
 # Токен бота
 TOKEN = "7311925613:AAEozZhlP1th7_X3LRJS_7lo3jsjy4ALHfE"
+DB_URI ="postgresql://postgres:CytrXtfYkeOEPafHduRqrWpGbsDyYTRK@postgres.railway.internal:5432/railway"
 
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+dp.middleware.setup(LoggingMiddleware())
+
+
+db_connection = psycopg2.connect(DB_URI, sslmode="require")
+db_object = db_connection.cursor()
 # Ссылки на спонсоров
 SPONSORS = [
     "https://t.me/+ZWDMAtOj1c5jN2Jk",
