@@ -8,7 +8,17 @@ from datetime import datetime, timedelta
 import requests
 
 
+const express = require('express')
+const app = express()
+const port = process.env.PORT || 4000;
 
+app.get('/', (req, res) => {
+  res.send('Hello World!')
+})
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+}) 
 # Токен бота
 TOKEN = "7311925613:AAEozZhlP1th7_X3LRJS_7lo3jsjy4ALHfE"
 
