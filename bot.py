@@ -9,16 +9,20 @@ import requests
 
 
 from flask import Flask
+import os
 
 app = Flask(__name__)
-port = 8080
+
+# Получаем порт из переменной окружения или используем 4000 по умолчанию
+port = int(os.getenv('PORT', 4000))
 
 @app.route('/')
 def hello_world():
     return 'Hello World!'
 
 if __name__ == '__main__':
-    app.run(port=port)
+    app.run(host='0.0.0.0', port=port)
+
 
 # Токен бота
 TOKEN = "7311925613:AAEozZhlP1th7_X3LRJS_7lo3jsjy4ALHfE"
