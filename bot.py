@@ -12,13 +12,7 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    return '''
-        <form action="/button_click" method="post">
-            <button type="submit">Нажми меня!</button>
-        </form>
-    '''
+
 
 @app.route('/button_click', methods=['POST'])
 def button_click():
