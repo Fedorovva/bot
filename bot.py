@@ -8,21 +8,25 @@ from datetime import datetime, timedelta
 import requests
 
 
-from flask import Flask
-import os
+from flask import Flask, request
 
 app = Flask(__name__)
 
-# Получаем порт из переменной окружения 'PORT' или используем 10000 по умолчанию
-port = int(os.getenv('PORT', 10000))  # Убедитесь, что порт устанавливается из окружения
-
 @app.route('/')
-def hello_world():
-    return 'Hello World!'
+def index():
+    return '''
+        <form action="/button_click" method="post">
+            <button type="submit">Нажми меня!</button>
+        </form>
+    '''
+
+@app.route('/button_click', methods=['POST'])
+def button_click():
+    return 'Кнопка нажата!'
 
 if __name__ == '__main__':
-    # Привязываем сервер к всем доступным адресам, используя порт из переменной окружения
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=10000)
+
 
 
 
