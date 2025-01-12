@@ -7,15 +7,14 @@ import asyncio
 from datetime import datetime, timedelta
 import requests
 
-from flask import Flask, request
+from flask import Flask
+
 app = Flask(__name__)
-@app.route('/')
-def index():
-    return '''
-        <form action="/button_click" method="post">
-            <button type="submit">Нажми меня!</button>
-        </form>
-    '''
+
+@app.route("/")
+def home():
+    return "Hello, world!"
+
 
 @app.route('/button_click', methods=['POST'])
 def button_click():
