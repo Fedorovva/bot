@@ -438,7 +438,7 @@ async def about_bot(callback: CallbackQuery):
 
 # Установите вебхук
 def set_webhook():
-    url = f'https://api.telegram.org/bot<7311925613:AAEozZhlP1th7_X3LRJS_7lo3jsjy4ALHfE>/setWebhook?url=https://your-server.com/your-webhook-endpoint'
+    url = f'https://api.render.com/deploy/srv-cu1sobt2ng1s73efbbog?key=wVM0r4C8xOs'
     response = requests.get(url)
     print(response.json())
 
