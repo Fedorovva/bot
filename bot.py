@@ -438,7 +438,7 @@ async def about_bot(callback: CallbackQuery):
 
 # Установите вебхук
 def set_webhook():
-    url = f'https://api.render.com/deploy/srv-cu1sobt2ng1s73efbbog?key=wVM0r4C8xOs'
+    url = f'https://api.render.com/deploy/srv-cu1sobt2ng1s73efbbog?key=SYX8ogtJkPs'
     response = requests.get(url)
     print(response.json())
 
