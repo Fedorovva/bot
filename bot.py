@@ -1,327 +1,378 @@
-from aiogram import Bot, Dispatcher, Router, F
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    Message,
+    CallbackQuery,
+    BotCommand
+)
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import BotCommand
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, Optional
-import logging
-from dataclasses import dataclass
-from decimal import Decimal
-import aiohttp
-from collections import defaultdict
-
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
+import asyncio
+import requests
 
 # Конфигурация бота
-class Config:
-    TOKEN = "7651604716:AAHyoyFuCTtHRiX_birOQ2sgo9jOtmKV2tI"
-    SPONSORS = [
-        "https://t.me/+ZWDMAtOj1c5jN2Jk", "https://t.me/+ZWDMAtOj1c5jN2Jk",
-        "https://t.me/+ZWDMAtOj1c5jN2Jk", "https://t.me/+ZWDMAtOj1c5jN2Jk",
-        "https://t.me/+t2OUM3mp0BphNzVi"
+TOKEN = "7651604716:AAHyoyFuCTtHRiX_birOQ2sgo9jOtmKV2tI"  # Замените на ваш токен
+
+# Ссылки на спонсоров
+SPONSORS = [
+    "https://t.me/+ZWDMAtOj1c5jN2Jk",
+    "https://t.me/+ZWDMAtOj1c5jN2Jk",
+    "https://t.me/+ZWDMAtOj1c5jN2Jk",
+    "https://t.me/+ZWDMAtOj1c5jN2Jk",
+    "https://t.me/+t2OUM3mp0BphNzVi"
+]
+
+# Остальные ссылки
+TEAM_LINK = "https://t.me/+UaMfr7uB405mMGNi"
+WITHDRAW_LINK = "https://t.me/c/2350708541/5"
+SHOP_LINK = "https://t.me/+t2OUM3mp0BphNzVi"
+INFO_LINK = "https://t.me/c/2350708541/3"
+PAYMENTS_LINK = "https://t.me/c/2350708541/5"
+MANUAL_LINK = "https://t.me/c/2350708541/6"
+CHAT_LINK = "https://t.me/c/2350708541/43"
+TRAINING_LINK = "https://t.me/c/2350708541/48"
+
+# Создаем объекты бота и диспетчера
+bot = Bot(token=TOKEN)
+dp = Dispatcher(storage=MemoryStorage())
+
+# База данных пользователей (в памяти)
+users = {}
+stats = {"total_users": 0, "today_users": 0, "total_payouts": 0.0}
+
+# Клавиатуры
+sponsors_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text="☠️ Спонсор 1", url=SPONSORS[0]),
+        InlineKeyboardButton(text="☠️ Спонсор 2", url=SPONSORS[1])
+    ],
+    [InlineKeyboardButton(text="☠️ Спонсор 3", url=SPONSORS[2])],
+    [
+        InlineKeyboardButton(text="☠️ Спонсор 4", url=SPONSORS[3]),
+        InlineKeyboardButton(text="☠️ Спонсор 5", url=SPONSORS[4])
+    ],
+    [InlineKeyboardButton(text="Проверить подписку ✅", callback_data="check_subscription")]
+])
+
+control_panel_menu = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text="💻 Личный кабинет", callback_data="profile"),
+        InlineKeyboardButton(text="📚 Магазин", url=SHOP_LINK)
+    ],
+    [
+        InlineKeyboardButton(text="📊 Статистика", callback_data="statistics"),
+        InlineKeyboardButton(text="📖 О боте", callback_data="about_bot")
     ]
-    TEAM_LINK = "https://t.me/+UaMfr7uB405mMGNi"
-    WITHDRAW_LINK = "https://t.me/c/2350708541/5"
-    SHOP_LINK = "https://t.me/+t2OUM3mp0BphNGNi"
-    INFO_LINK = "https://t.me/c/2350708541/3"
-    PAYMENTS_LINK = "https://t.me/c/2350708541/5"
-    MANUAL_LINK = "https://t.me/c/2350708541/6"
-    CHAT_LINK = "https://t.me/c/2350708541/43"
-    TRAINING_LINK = "https://t.me/c/2350708541/48"
+])
 
+profile_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text="👥 Рефералы", callback_data="referrals"),
+        InlineKeyboardButton(text="💸 Вывести", url=WITHDRAW_LINK)
+    ],
+    [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main_menu")]
+])
 
-@dataclass
-class UserStats:
-    balance: Decimal = Decimal("0")
-    referrals: int = 0
-    referral_earnings: Decimal = Decimal("0")
-    joined_at: datetime = None
-    team_joined: bool = False
-    referral_stats: Dict[str, int] = None
-    ref_link: str = ""
+about_bot_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text="ℹ️ Информация", url=INFO_LINK),
+        InlineKeyboardButton(text="💸 Выплаты", url=PAYMENTS_LINK)
+    ],
+    [
+        InlineKeyboardButton(text="📘 Мануал", url=MANUAL_LINK),
+        InlineKeyboardButton(text="💬 Чат", url=CHAT_LINK)
+    ],
+    [InlineKeyboardButton(text="🎓 Обучение", url=TRAINING_LINK)],
+    [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main_menu")]
+])
 
-    def __post_init__(self):
-        if self.joined_at is None:
-            self.joined_at = datetime.now()
-        if self.referral_stats is None:
-            self.referral_stats = defaultdict(int)
+back_button = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main_menu")]
+])
 
+# Вспомогательные функции
+def get_user_status(referrals: int) -> str:
+    if referrals < 50: return "Возрождённый"
+    elif referrals < 100: return "Призрак"
+    elif referrals < 250: return "Спектр"
+    elif referrals < 500: return "Фантом"
+    else: return "Бессмертный"
 
-class Stats:
+def get_today() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
 
-    def __init__(self):
-        self.total_users = 0
-        self.today_users = 0
-        self.total_payouts = Decimal("0")
+def get_weekly_referrals(user_id: int) -> int:
+    today = datetime.now()
+    week_ago = today - timedelta(days=7)
+    user_data = users.get(user_id, {})
+    referral_stats = user_data.get("referral_stats", {})
+    return sum(
+        count for date, count in referral_stats.items()
+        if week_ago.strftime("%Y-%m-%d") <= date <= today.strftime("%Y-%m-%d")
+    )
 
+# ... (весь предыдущий код до обработчика /start остается тем же) ...
 
-from aiogram import Bot, Dispatcher, Router, F
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
-# ... (остальные импорты остаются теми же)
+@dp.message(F.text.startswith("/start"))
+async def start_command(message: Message):
+    user_id = message.from_user.id
+    referrer_id = None
 
-
-class BotManager:
-
-    def __init__(self):
-        self.bot = Bot(token=Config.TOKEN)
-        self.dp = Dispatcher(storage=MemoryStorage())
-        self.users: Dict[int, UserStats] = {}
-        self.stats = Stats()
-        self.setup_keyboards()
-        self.register_handlers()
-
-    def setup_keyboards(self):
-        """Настройка всех клавиатур"""
-        # Клавиатура со спонсорами
-        self.sponsors_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="☠️ Спонсор 1",
-                                     url=Config.SPONSORS[0]),
-                InlineKeyboardButton(text="☠️ Спонсор 2",
-                                     url=Config.SPONSORS[1])
-            ],
-            [
-                InlineKeyboardButton(text="☠️ Спонсор 3",
-                                     url=Config.SPONSORS[2])
-            ],
-            [
-                InlineKeyboardButton(text="☠️ Спонсор 4",
-                                     url=Config.SPONSORS[3]),
-                InlineKeyboardButton(text="☠️ Спонсор 5",
-                                     url=Config.SPONSORS[4])
-            ],
-            [
-                InlineKeyboardButton(text="Проверить подписку ✅",
-                                     callback_data="check_subscription")
-            ]
-        ])
-
-        # Основное меню
-        self.control_panel_menu = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="💻 Личный кабинет",
-                                     callback_data="profile"),
-                InlineKeyboardButton(text="📚 Магазин", url=Config.SHOP_LINK)
-            ],
-            [
-                InlineKeyboardButton(text="📊 Статистика",
-                                     callback_data="statistics"),
-                InlineKeyboardButton(text="📖 О боте",
-                                     callback_data="about_bot")
-            ]
-        ])
-
-        # Меню профиля
-        self.profile_keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[[
-                InlineKeyboardButton(text="👥 Рефералы",
-                                     callback_data="referrals"),
-                InlineKeyboardButton(text="💸 Вывести",
-                                     url=Config.WITHDRAW_LINK)
-            ],
-                             [
-                                 InlineKeyboardButton(
-                                     text="🔙 Назад",
-                                     callback_data="back_to_main_menu")
-                             ]])
-
-        # О боте
-        self.about_bot_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="ℹ️ Информация",
-                                     url=Config.INFO_LINK),
-                InlineKeyboardButton(text="💸 Выплаты",
-                                     url=Config.PAYMENTS_LINK)
-            ],
-            [
-                InlineKeyboardButton(text="📘 Мануал", url=Config.MANUAL_LINK),
-                InlineKeyboardButton(text="💬 Чат", url=Config.CHAT_LINK)
-            ],
-            [
-                InlineKeyboardButton(text="🎓 Обучение",
-                                     url=Config.TRAINING_LINK)
-            ],
-            [
-                InlineKeyboardButton(text="🔙 Назад",
-                                     callback_data="back_to_main_menu")
-            ]
-        ])
-
-    def register_handlers(self):
-        """Регистрация всех обработчиков"""
-        self.dp.callback_query.register(self.check_subscription,
-                                        F.data == "check_subscription")
-        self.dp.message.register(self.cmd_start, Command("start"))
-        self.dp.callback_query.register(self.profile, F.data == "profile")
-
-    async def check_subscription(self, callback: CallbackQuery):
-        """Обработчик проверки подписки"""
+    if len(message.text.split()) > 1:
         try:
-            await callback.message.edit_text(
-                "⏳ Проверка подписки... Пожалуйста, подождите.")
-            await asyncio.sleep(2)  # Имитация проверки
+            referrer_id = int(message.text.split()[1])
+        except ValueError:
+            referrer_id = None
 
-            is_subscribed = await self.check_subscription_actual(
-                callback.from_user.id)
+    if user_id not in users:
+        users[user_id] = {
+            "balance": 0.0,
+            "referrals": 0,
+            "referral_earnings": 0.0,
+            "joined_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "ref_link": f"https://t.me/{(await bot.get_me()).username}?start={user_id}",
+            "team_joined": False,
+            "referral_stats": {},
+            "referrer_id": referrer_id,  # Сохраняем ID пригласившего пользователя
+            "subscription_checked": False  # Флаг для отслеживания прохождения подписки
+        }
+        stats["total_users"] += 1
+        stats["today_users"] += 1
 
-            if not is_subscribed:
-                await callback.message.edit_text(
-                    "❗ Подписка не подтверждена. Пожалуйста, подпишитесь на ВСЕХ спонсоров.",
-                    reply_markup=self.sponsors_keyboard)
-                return
+        await message.answer(
+            "✅ Подпишитесь на наших спонсоров, чтобы продолжить!",
+            reply_markup=sponsors_keyboard
+        )
+    else:
+        await message.answer(
+            "Добро пожаловать обратно! Используйте панель управления для дальнейших действий.",
+            reply_markup=control_panel_menu
+        )
 
-            await callback.message.edit_text(
-                "✅ Подписка подтверждена! Теперь можете подать заявку на вступление в команду.",
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[[
-                        InlineKeyboardButton(text="Подать заявку",
-                                             url=Config.TEAM_LINK)
-                    ],
-                                     [
-                                         InlineKeyboardButton(
-                                             text="Я вступил в команду",
-                                             callback_data="confirm_team_join")
-                                     ]]))
+@dp.callback_query(F.data == "check_subscription")
+async def check_subscription(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = users.get(user_id, {})
 
-        except Exception as e:
-            logger.error(f"Error in check_subscription: {e}")
-            await callback.message.edit_text(
-                "Произошла ошибка при проверке подписки. Попробуйте позже.",
-                reply_markup=self.sponsors_keyboard)
+    await callback.message.edit_text(
+        "⏳ Проверка подписки... Пожалуйста, подождите."
+    )
+    await asyncio.sleep(2)
 
-    async def check_subscription_actual(self, user_id: int) -> bool:
-        """Проверка подписки только на последний канал"""
-        try:
-            last_sponsor = Config.SPONSORS[-1]
-            chat_id = last_sponsor.split('/')[-1]
+    # Если пользователь новый и еще не проходил проверку подписки
+    if user_data and not user_data.get("subscription_checked"):
+        referrer_id = user_data.get("referrer_id")
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                        f"https://api.telegram.org/bot{Config.TOKEN}/getChatMember",
-                        params={
-                            "chat_id": chat_id,
-                            "user_id": user_id
-                        }) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return data["result"]["status"] in [
-                            "member", "administrator", "creator"
-                        ]
-                    return False
-        except Exception as e:
-            logger.error(f"Error checking subscription: {e}")
-            return False
+        # Отмечаем, что пользователь прошел проверку подписки
+        user_data["subscription_checked"] = True
 
-    async def cmd_start(self, message: Message):
-        """Обработчик команды /start"""
-        user_id = message.from_user.id
+        # Обновляем статистику реферера и отправляем ему уведомление
+        if referrer_id and referrer_id in users:
+            users[referrer_id]["referrals"] += 1
+            users[referrer_id]["balance"] += 0.5
+            users[referrer_id]["referral_earnings"] += 0.5
 
-        try:
-            args = message.text.split()
-            if len(args) > 1:
-                try:
-                    referrer_id = int(args[1])
-                    if referrer_id in self.users and referrer_id != user_id:
-                        await self.process_referral(referrer_id, user_id)
-                except ValueError:
-                    pass
+            today = get_today()
+            if today not in users[referrer_id]["referral_stats"]:
+                users[referrer_id]["referral_stats"][today] = 0
+            users[referrer_id]["referral_stats"][today] += 1
 
-            if user_id not in self.users:
-                self.users[user_id] = UserStats(
-                    ref_link=
-                    f"https://t.me/{(await self.bot.get_me()).username}?start={user_id}"
+            # Отправляем уведомление рефереру
+            try:
+                await bot.send_message(
+                    referrer_id,
+                    f"🎉 По вашей реферальной ссылке зарегистрировался новый пользователь!\n"
+                    f"💰 Ваш баланс пополнен на 0.5$\n"
+                    f"📊 Всего рефералов: {users[referrer_id]['referrals']}"
                 )
-                self.stats.total_users += 1
-                self.stats.today_users += 1
+            except Exception as e:
+                print(f"Не удалось отправить уведомление пользователю {referrer_id}: {e}")
 
-                await message.answer(
-                    "✅ Подпишитесь на наших спонсоров, чтобы продолжить!",
-                    reply_markup=self.sponsors_keyboard)
-            else:
-                await message.answer(
-                    "Добро пожаловать обратно! Используйте панель управления для дальнейших действий.",
-                    reply_markup=self.control_panel_menu)
+    await callback.message.edit_text(
+        "✅ Подписка подтверждена! Теперь можете подать заявку на вступление в команду.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Подать заявку", url=TEAM_LINK)],
+            [InlineKeyboardButton(text="Я вступил в команду", callback_data="confirm_team_join")]
+        ])
+    )
 
-        except Exception as e:
-            logger.error(f"Error in cmd_start: {e}")
-            await message.answer("Произошла ошибка. Попробуйте позже.")
+@dp.callback_query(F.data == "confirm_team_join")
+async def confirm_team_join(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = users.get(user_id, {})
 
-    async def profile(self, callback: CallbackQuery):
-        """Обработчик кнопки Личный кабинет"""
-        user_id = callback.from_user.id
-        user_data = self.users.get(user_id)
+    if user_data:
+        if user_data.get("team_joined"):
+            await callback.message.edit_text(
+                "🎉 Вы уже вступили в команду!",
+                reply_markup=control_panel_menu
+            )
+        else:
+            user_data["team_joined"] = True
 
-        if user_data:
-            status = self.get_user_status(user_data.referrals)
-            weekly_referrals = self.get_weekly_referrals(user_id)
-            today_referrals = user_data.referral_stats.get(self.get_today(), 0)
-
-            profile_message = ("☠️ 𝐃𝐞𝐚𝐭𝐡𝐥𝐞𝐬𝐬 || 𝐓𝐞𝐚𝐦\n\n"
-                               "💻—Личный кабинет\n"
-                               f"┣🆔 Мой ID: {user_id}\n"
-                               f"┣💰 Баланс: {user_data.balance}$\n"
-                               f"┣🏆 Статус: {status}\n"
-                               f"┣👥 Рефералов сегодня: {today_referrals}\n"
-                               f"┣📅 Рефералов за неделю: {weekly_referrals}\n"
-                               f"┣🌟 Всего рефералов: {user_data.referrals}")
+            # Отправляем уведомление рефереру о полном прохождении регистрации
+            referrer_id = user_data.get("referrer_id")
+            if referrer_id and referrer_id in users:
+                try:
+                    await bot.send_message(
+                        referrer_id,
+                        "🎯 Ваш реферал успешно присоединился к команде!"
+                    )
+                except Exception as e:
+                    print(f"Не удалось отправить уведомление пользователю {referrer_id}: {e}")
 
             await callback.message.edit_text(
-                profile_message, reply_markup=self.profile_keyboard)
+                "🎉 Вы успешно вступили в команду!",
+                reply_markup=control_panel_menu
+            )
 
-    def get_user_status(self, referrals: int) -> str:
-        """Определение статуса пользователя"""
-        if referrals >= 500:
-            return "Бессмертный"
-        elif referrals >= 250:
-            return "Фантом"
-        elif referrals >= 100:
-            return "Спектр"
-        elif referrals >= 50:
-            return "Призрак"
-        return "Возрождённый"
+# ... (остальной код остается тем же) ...
 
-    def get_today(self):
-        """Получение текущей даты"""
-        return datetime.now().strftime("%Y-%m-%d")
+# Обработчики команд и callback-запросов
+@dp.message(F.text.startswith("/start"))
+async def start_command(message: Message):
+    user_id = message.from_user.id
+    referrer_id = None
 
-    def get_weekly_referrals(self, user_id: int) -> int:
-        """Подсчёт рефералов за неделю"""
-        today = datetime.now()
-        week_ago = today - timedelta(days=7)
-        user_data = self.users.get(user_id, {})
-        return sum(count for date, count in user_data.referral_stats.items()
-                   if week_ago.strftime("%Y-%m-%d") <= date <= today.strftime(
-                       "%Y-%m-%d"))
-
-    async def run(self):
-        """Запуск бота"""
+    if len(message.text.split()) > 1:
         try:
-            commands = [
-                BotCommand(command="/start", description="Начать работу"),
-                BotCommand(command="/profile", description="Личный кабинет"),
-                BotCommand(command="/help", description="Помощь")
-            ]
-            await self.bot.set_my_commands(commands)
-            await self.dp.start_polling(self.bot)
-        except Exception as e:
-            logger.error(f"Error starting bot: {e}")
-            raise
+            referrer_id = int(message.text.split()[1])
+        except ValueError:
+            referrer_id = None
 
+    if user_id not in users:
+        users[user_id] = {
+            "balance": 0.0,
+            "referrals": 0,
+            "referral_earnings": 0.0,
+            "joined_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "ref_link": f"https://t.me/{(await bot.get_me()).username}?start={user_id}",
+            "team_joined": False,
+            "referral_stats": {}
+        }
+        stats["total_users"] += 1
+        stats["today_users"] += 1
+
+        if referrer_id and referrer_id in users:
+            users[referrer_id]["referrals"] += 1
+            users[referrer_id]["balance"] += 0.5
+            users[referrer_id]["referral_earnings"] += 0.5
+
+            today = get_today()
+            if today not in users[referrer_id]["referral_stats"]:
+                users[referrer_id]["referral_stats"][today] = 0
+            users[referrer_id]["referral_stats"][today] += 1
+
+        await message.answer(
+            "✅ Подпишитесь на наших спонсоров, чтобы продолжить!",
+            reply_markup=sponsors_keyboard
+        )
+    else:
+        await message.answer(
+            "Добро пожаловать обратно! Используйте панель управления для дальнейших действий.",
+            reply_markup=control_panel_menu
+        )
+
+@dp.callback_query(F.data == "check_subscription")
+async def check_subscription(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "⏳ Проверка подписки... Пожалуйста, подождите."
+    )
+    await asyncio.sleep(2)
+
+    await callback.message.edit_text(
+        "✅ Подписка подтверждена! Теперь можете подать заявку на вступление в команду.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Подать заявку", url=TEAM_LINK)],
+            [InlineKeyboardButton(text="Я вступил в команду", callback_data="confirm_team_join")]
+        ])
+    )
+
+@dp.callback_query(F.data == "confirm_team_join")
+async def confirm_team_join(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = users.get(user_id, {})
+
+    if user_data:
+        if user_data.get("team_joined"):
+            await callback.message.edit_text(
+                "🎉 Вы уже вступили в команду!",
+                reply_markup=control_panel_menu
+            )
+        else:
+            user_data["team_joined"] = True
+            await callback.message.edit_text(
+                "🎉 Вы успешно вступили в команду!",
+                reply_markup=control_panel_menu
+            )
+
+@dp.callback_query(F.data == "profile")
+async def profile_handler(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = users.get(user_id, {})
+
+    if user_data:
+        status = get_user_status(user_data["referrals"])
+        weekly_referrals = get_weekly_referrals(user_id)
+        today_referrals = user_data["referral_stats"].get(get_today(), 0)
+
+        message_text = (
+            "☠️ 𝐃𝐞𝐚𝐭𝐡𝐥𝐞𝐬𝐬 𝐓𝐞𝐚𝐦\n\n"
+            "💻—Личный кабинет\n"
+            f"┣🆔 Мой ID: {user_id}\n"
+            f"┣💰 Баланс: {user_data['balance']}$\n"
+            f"┣🏆 Статус: {status}\n"
+            f"┣👥 Рефералов сегодня: {today_referrals}\n"
+            f"┣📅 Рефералов за неделю: {weekly_referrals}\n"
+            f"┣🌟 Всего рефералов: {user_data['referrals']}"
+        )
+        await callback.message.edit_text(message_text, reply_markup=profile_keyboard)
+
+@dp.callback_query(F.data == "referrals")
+async def referrals_handler(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = users.get(user_id, {})
+
+    if user_data:
+        referral_link = user_data["ref_link"]
+        referrals_count = user_data["referrals"]
+        message_text = (
+            f"🔗 Ваша реферальная ссылка: {referral_link}\n"
+            f"👥 Всего рефералов: {referrals_count}"
+        )
+        await callback.message.edit_text(message_text, reply_markup=back_button)
+
+@dp.callback_query(F.data == "statistics")
+async def statistics_handler(callback: CallbackQuery):
+    message_text = (
+        "☠️ 𝐃𝐞𝐚𝐭𝐡𝐥𝐞𝐬𝐬 𝐓𝐞𝐚𝐦\n\n"
+        "📊—Статистика:\n"
+        f"┣Всего пользователей: {stats['total_users']}\n"
+        f"┗За сегодня: {stats['today_users']}"
+    )
+    await callback.message.edit_text(message_text, reply_markup=back_button)
+
+@dp.callback_query(F.data == "about_bot")
+async def about_bot_handler(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "☠️ 𝐃𝐞𝐚𝐭𝐡𝐥𝐞𝐬𝐬 𝐓𝐞𝐚𝐦\n\n📚 Информация о 𝐃𝐞𝐚𝐭𝐡𝐥𝐞𝐬𝐬 || 𝐓𝐞𝐚𝐦",
+        reply_markup=about_bot_keyboard
+    )
+
+@dp.callback_query(F.data == "back_to_main_menu")
+async def back_to_main_handler(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "Главное меню",
+        reply_markup=control_panel_menu
+    )
+
+# Запуск бота
+async def main():
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Запустить бота")
+    ])
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    bot_manager = BotManager()
-    try:
-        asyncio.run(bot_manager.run())
-    except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
-    except Exception as e:
-        logger.error(f"Critical error: {e}")
+    asyncio.run(main())
