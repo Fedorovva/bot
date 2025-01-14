@@ -10,9 +10,14 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from datetime import datetime, timedelta
 import asyncio
 import requests
+import os
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения
+load_dotenv()
 
 # Конфигурация бота
-TOKEN = "7651604716:AAHyoyFuCTtHRiX_birOQ2sgo9jOtmKV2tI"  # Замените на ваш токен
+TOKEN = os.getenv("BOT_TOKEN", "7651604716:AAHyoyFuCTtHRiX_birOQ2sgo9jOtmKV2tI")  # Используем ваш токен как значение по умолчанию
 
 # Ссылки на спонсоров
 SPONSORS = [
