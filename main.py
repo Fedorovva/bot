@@ -23,7 +23,7 @@ TOKEN = os.getenv("BOT_TOKEN", "7651604716:AAHyoyFuCTtHRiX_birOQ2sgo9jOtmKV2tI")
 
 # Ссылки на спонсоров
 SPONSORS = [
-    "https://t.me/+ZWDMAtOj1c5jN2Jk",
+    "https://t.me/+_6vGEyaw9QBjNDZk",
     "https://t.me/+ZWDMAtOj1c5jN2Jk",
     "https://t.me/+ZWDMAtOj1c5jN2Jk",
     "https://t.me/+ZWDMAtOj1c5jN2Jk",
